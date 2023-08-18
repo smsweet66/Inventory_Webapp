@@ -1,34 +1,29 @@
-use reqwest::blocking::Client;
-use std::error::Error;
+use reqwest::{Client, Error};
 use crate::models::cable_model::*;
 
-const cable_url: &str = "http://localhost:8080/cable";
+const CABLE_URL: &str = "http://localhost:8080/cable";
 
-pub fn get_cables(client: Client) -> Result<Vec<Cable>, Box<dyn Error>> {
-    let cables = client.get(cable_url)
-        .send()?
-        .json::<Vec<Cable>>()?;
-    Ok(cables)
+pub async fn get_cables(client: &Client) -> Result<Vec<Cable>, Error> {
+    let resp = client.get(CABLE_URL).send().await?;
+
+    resp.json::<Vec<Cable>>().await
 }
 
-pub fn create_cable(client: Client, new_cable: NewCable) -> Result<Cable, Box<dyn Error>> {
-    let cable = client.post(cable_url)
-        .json(&new_cable)
-        .send()?
-        .json::<Cable>()?;
-    Ok(cable)
+pub async fn create_cable(client: &Client, cable: &NewCable) -> Result<Cable, Error> {
+    let resp = client.post(CABLE_URL).json(&cable).send().await?;
+
+    resp.json::<Cable>().await
 }
 
-pub fn update_cable(client: Client, cable: Cable) -> Result<Cable, Box<dyn Error>> {
-    let cable = client.put(cable_url)
-        .json(&cable)
-        .send()?
-        .json::<Cable>()?;
-    Ok(cable)
+pub async fn update_cable(client: &Client, cable: &Cable) -> Result<Cable, Error> {
+    let resp = client.put(CABLE_URL).json(&cable).send().await?;
+
+    resp.json::<Cable>().await
 }
 
-pub fn delete_cable(client: Client, cable_id: i32) -> Result<(), Box<dyn Error>> {
-    client.delete(format!("{}/{}", cable_url, cable_id))
-        .send()?;
+pub async fn delete_cable(client: &Client, cable_id: i32) -> Result<(), Error> {
+    let url = format!("{}/{}", CABLE_URL, cable_id);
+    let _resp = client.delete(&url).send().await?;
+
     Ok(())
 }
