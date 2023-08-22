@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde::{Serialize, Deserialize};
+use validator::Validate;
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug, Default)]
 pub enum Gender {
@@ -22,6 +23,10 @@ impl Gender {
             _ => Gender::Male
         }
     }
+
+    pub fn to_string_vec() -> Vec<String> {
+        vec!["Male".to_owned(), "Female".to_owned()]
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
@@ -32,8 +37,9 @@ pub struct CableType {
     pub image: Vec<u8>
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug, Validate)]
 pub struct NewCableType {
+    #[validate(length(min = 1, message = "Name is required"))]
     pub name: String,
     pub cable_gender: Gender,
     pub image: Vec<u8>

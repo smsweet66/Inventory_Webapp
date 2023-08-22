@@ -1,5 +1,8 @@
 use std::ops::Deref;
+use std::cell::RefCell;
+use std::rc::Rc;
 
+use validator::{ValidationErrors, Validate};
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
@@ -9,7 +12,8 @@ use yew_router::prelude::*;
 
 use crate::models::cable_type_model::*;
 use crate::server_requests::cable_type_requests::create_cable_type;
-use crate::store::{State, set_page_loading};
+use crate::store::{Store, set_page_loading, set_show_alert};
+use crate::components::{form_input::FormInputComponent, form_select::FormSelectComponent, loading_button::LoadingButtonComponent};
 
 enum Field {
 	Name,
@@ -17,9 +21,8 @@ enum Field {
 	Image
 }
 
-fn get_input_callback(field: Field, cloned_form: UseStateHandle<NewCableType>,
-) -> Callback<Event> {
-    let callback = Callback::from(move |value| {
+fn get_input_callback(field: Field, cloned_form: UseStateHandle<NewCableType>) -> Callback<String> {
+    Callback::from(move |value| {
         let mut data = cloned_form.deref().clone();
         match &field {
             Field::Name => data.name = value,
@@ -27,23 +30,18 @@ fn get_input_callback(field: Field, cloned_form: UseStateHandle<NewCableType>,
 			Field::Image => data.image = value.into_bytes(),
 		}
         cloned_form.set(data);
-    });
-
-	Callback::from(move |event: Event| {
-		let target = event.target().unwrap();
-		let value = target.unchecked_into::<HtmlInputElement>().value();
-		callback.emit(value);
-	})
+    })
 }
 
 /// Page for creating a new cable type
 /// has a text input for the name, a drop down list for the gender,
 /// and a file input for the image
 #[function_component]
-pub fn create_cable_type_page() -> Html {
-	let (state, dispatch) = use_store::<State>();
+pub fn CreateCableTypePage() -> Html {
+	let (store, dispatch) = use_store::<Store>();
 	let form = use_state(|| NewCableType::default());
 	let navigator = use_navigator().unwrap();
+	let validation_errors = use_state(|| Rc::new(RefCell::new(ValidationErrors::new())));
 
 	let name_input_ref = NodeRef::default();
 	let gender_input_ref = NodeRef::default();
@@ -54,8 +52,9 @@ pub fn create_cable_type_page() -> Html {
 	let handle_image_input = get_input_callback(Field::Image, form.clone());
 
 	let on_submit = {
-		let cloned_client = state.as_ref().client.clone();
+		let cloned_client = store.as_ref().client.clone();
 		let cloned_form = form.clone();
+		let cloned_validation_errors = validation_errors.clone();
 		let cloned_navigator = navigator.clone();
 		let cloned_dispatch = dispatch.clone();
 
@@ -66,21 +65,29 @@ pub fn create_cable_type_page() -> Html {
 			let dispatch = cloned_dispatch.clone();
 			let navigator = cloned_navigator.clone();
 			let form = cloned_form.clone();
+			let validation_errors = cloned_validation_errors.clone();
 
 			spawn_local(async move {
-				let data = form.deref().clone();
-
-				set_page_loading(true, dispatch.clone());
-
-				let res = create_cable_type(&client, &data).await;
-				match res {
+				match form.validate() {
 					Ok(_) => {
-						set_page_loading(false, dispatch);
-						todo!("navigate to cable type page");
+						let data = form.deref().clone();
+
+						set_page_loading(true, dispatch.clone());
+		
+						let res = create_cable_type(&client, &data).await;
+						match res {
+							Ok(_) => {
+								set_page_loading(false, dispatch);
+								todo!("navigate to cable type page");
+							}
+							Err(e) => {
+								set_page_loading(false, dispatch.clone());
+								set_show_alert(e.to_string(), dispatch);
+							}
+						}
 					}
-					Err(_) => {
-						set_page_loading(false, dispatch);
-						todo!("display error message");
+					Err(errors) => {
+						validation_errors.set(Rc::new(RefCell::new(errors)));
 					}
 				}
 			});
@@ -92,27 +99,35 @@ pub fn create_cable_type_page() -> Html {
 			<h1>{ "Create Cable Type" }</h1>
 
 			<form onsubmit={on_submit}>
-				<label for="name">{ "Name" }</label>
-				<input name="name" id="name"
-					ref={name_input_ref}
-					type="text"
-					placeholder="Name"
-					onchange={handle_name_input}
+				<FormInputComponent
+					label="Cable Type"
+					name="name"
+					input_ref={name_input_ref.clone()}
+					handle_onchange={handle_name_input}
+					errors={&*validation_errors}
 				/>
-				
-				<label for="gender">{ "Cable Gender" }</label>
-				<select name="gender" id="gender" ref={gender_input_ref} onchange={handle_gender_input}>
-					<option value="Male">{ "Male" }</option>
-					<option value="Female">{ "Female" }</option>
-				</select>
-
-				<label for="image">{ "Image" }</label>
-				<input name="image" id="image"
-					ref={image_input_ref}
-					type="image"
-					placeholder="Image"
-					onchange={handle_image_input}
+				<FormSelectComponent
+					label="Cable Gender"
+					name="gender"
+					input_ref={gender_input_ref.clone()}
+					handle_onchange={handle_gender_input}
+					errors={&*validation_errors}
+					options={Gender::to_string_vec()}
 				/>
+				<FormInputComponent
+					label="Image"
+					name="image"
+					input_ref={image_input_ref.clone()}
+					handle_onchange={handle_image_input}
+					errors={&*validation_errors}
+					input_type="file"
+				/>
+				<LoadingButtonComponent
+					loading={store.loading}
+					text_color={Some("text-ct-blue-600".to_string())}
+				>
+					{"Create Cable Type"}
+				</LoadingButtonComponent>
 			</form>
 		</div>
 	}
