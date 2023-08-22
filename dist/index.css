@@ -536,6 +536,10 @@ video {
   --tw-backdrop-sepia:  ;
 }
 
+.table{
+  display: table;
+}
+
 html {
   font-family: 'Poppins', sans-serif;
 }
