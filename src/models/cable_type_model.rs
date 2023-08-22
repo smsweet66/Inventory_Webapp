@@ -15,6 +15,15 @@ impl Display for Gender {
     }
 }
 
+impl Gender {
+    pub fn from_string(value: &str) -> Self {
+        match value {
+            "Female" => Gender::Female,
+            _ => Gender::Male
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
 pub struct CableType {
     pub id: i32,

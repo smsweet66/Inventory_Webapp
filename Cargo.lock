@@ -860,6 +860,7 @@ dependencies = [
  "reqwest",
  "serde",
  "uuid",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "yew",
