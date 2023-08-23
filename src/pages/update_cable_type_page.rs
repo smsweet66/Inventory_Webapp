@@ -11,8 +11,8 @@ use yewdux::prelude::*;
 use yew_router::prelude::*;
 
 use crate::models::cable_type_model::*;
-use crate::server_requests::cable_type_requests::create_cable_type;
-use crate::store::{Store, set_page_loading, set_show_alert, add_cable_type};
+use crate::server_requests::cable_type_requests;
+use crate::store::{Store, set_page_loading, set_show_alert, update_cable_type};
 use crate::components::{form_input::FormInputComponent, form_select::FormSelectComponent, loading_button::LoadingButtonComponent};
 
 enum Field {
@@ -21,7 +21,7 @@ enum Field {
 	Image
 }
 
-fn get_input_callback(field: Field, cloned_form: UseStateHandle<NewCableType>) -> Callback<String> {
+fn get_input_callback(field: Field, cloned_form: UseStateHandle<CableType>) -> Callback<String> {
     Callback::from(move |value| {
         let mut data = cloned_form.deref().clone();
         match &field {
@@ -33,13 +33,18 @@ fn get_input_callback(field: Field, cloned_form: UseStateHandle<NewCableType>) -
     })
 }
 
+#[derive(Properties, PartialEq, Clone)]
+pub struct UpdateCableTypePageProps {
+	pub cable_type_id: i32,
+}
+
 /// Page for creating a new cable type
 /// has a text input for the name, a drop down list for the gender,
 /// and a file input for the image
 #[function_component]
-pub fn CreateCableTypePage() -> Html {
+pub fn UpdateCableTypePage(props: &UpdateCableTypePageProps) -> Html {
 	let (store, dispatch) = use_store::<Store>();
-	let form = use_state(|| NewCableType::default());
+	let form = use_state(|| store.cable_types.iter().find(|cable_type| cable_type.id == props.cable_type_id).unwrap().clone());
 	let navigator = use_navigator().unwrap();
 	let validation_errors = use_state(|| Rc::new(RefCell::new(ValidationErrors::new())));
 
@@ -74,12 +79,12 @@ pub fn CreateCableTypePage() -> Html {
 
 						set_page_loading(true, dispatch.clone());
 		
-						let res = create_cable_type(&client, &data).await;
+						let res = cable_type_requests::update_cable_type(&client, &data).await;
 						match res {
 							Ok(cable_type) => {
-								add_cable_type(cable_type, dispatch.clone());
-								set_page_loading(false, dispatch);
-								todo!("navigate to cable type page");
+								set_page_loading(false, dispatch.clone());
+								update_cable_type(cable_type, dispatch);
+								navigator.go(-1);
 							}
 							Err(e) => {
 								set_page_loading(false, dispatch.clone());
@@ -97,7 +102,7 @@ pub fn CreateCableTypePage() -> Html {
 
 	html! {
 		<div>
-			<h1>{ "Create Cable Type" }</h1>
+			<h1>{ "Update Cable Type" }</h1>
 
 			<form onsubmit={on_submit}>
 				<FormInputComponent

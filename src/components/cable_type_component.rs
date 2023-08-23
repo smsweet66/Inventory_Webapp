@@ -9,6 +9,7 @@ use crate::server_requests::cable_type_requests;
 #[derive(PartialEq, Properties)]
 pub struct CableTypeProps {
 	pub data: CableType,
+	pub on_click: Callback<MouseEvent>,
 }
 
 /// displays the name of the cable, its gender, and an image of the cable in a table row
@@ -44,15 +45,21 @@ pub fn CableTypeComponent(props: &CableTypeProps) -> Html {
 	};
 
 	html! {
-		<div>
+		<li>
 			<table>
 				<tr>
-					<td width="20%">{&props.data.name}</td>
-					<td width="20%">{&props.data.cable_gender}</td>
-					<td width="40%"><img src={format!("data:image/png;base64, {}", String::from_utf8_lossy(&props.data.image))} /></td>
+					<td width="80%" onclick={&props.on_click}>
+						<table>
+							<tr>
+								<td width="30%">{&props.data.name}</td>
+								<td width="30%">{&props.data.cable_gender}</td>
+								<td width="40%"><img src={format!("data:image/png;base64, {}", String::from_utf8_lossy(&props.data.image))} /></td>
+							</tr>
+						</table>
+					</td>
 					<td width="20%"><i class="fas fa-trash" onclick={delete_cable}></i></td>
 				</tr>
 			</table>
-		</div>
+		</li>
 	}
 }

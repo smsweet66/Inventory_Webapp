@@ -29,9 +29,10 @@ impl Gender {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default, Validate)]
 pub struct CableType {
     pub id: i32,
+    #[validate(length(min = 1, message = "Name is required"))]
     pub name: String,
     pub cable_gender: Gender,
     pub image: Vec<u8>

@@ -5,6 +5,7 @@ mod server_requests;
 mod store;
 mod components;
 mod pages;
+mod router;
 
 #[function_component(App)]
 fn app() -> Html {
