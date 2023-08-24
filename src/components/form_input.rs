@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use validator::ValidationErrors;
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
+use wasm_bindgen::{JsCast, prelude::Closure};
+use web_sys::{HtmlInputElement, FileReader};
 use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
@@ -34,10 +34,33 @@ pub fn FormInputComponent(props: &FormInputProps) -> Html {
     };
 
     let handle_onchange = props.handle_onchange.clone();
-    let onchange = Callback::from(move |event: Event| {
-        let target = event.target().unwrap();
-        let value = target.unchecked_into::<HtmlInputElement>().value();
-        handle_onchange.emit(value);
+    let cloned_input_type = input_type.clone();
+    let on_change = Callback::from(move |event: Event| {
+        let target = event.target().unwrap().unchecked_into::<HtmlInputElement>();
+        match cloned_input_type.as_str() {
+            "file" => {
+                let file = target.files().unwrap().get(0).unwrap();
+                log::info!("Selected file: {}", file.name());
+
+                let reader = FileReader::new().unwrap();
+                reader.read_as_data_url(&file).unwrap();
+                let cloned_handle_onchange = handle_onchange.clone();
+                let on_load_end = Closure::wrap(Box::new(move |event: Event| {
+                    let handle_onchange = cloned_handle_onchange.clone();
+                    let reader = event.target().unwrap().unchecked_into::<FileReader>();
+                    let result = reader.result().unwrap().as_string().unwrap();
+                    let base64 = result.split(",").collect::<Vec<&str>>()[1];
+                    handle_onchange.emit(base64.to_string());
+                }) as Box<dyn FnMut(_)>);
+                reader.set_onloadend(Some(on_load_end.as_ref().unchecked_ref()));
+                on_load_end.forget();
+            }
+            "text" => {
+                let value = target.value();
+                handle_onchange.emit(value);
+            }
+            _ => {}
+        }
     });
 
     html! {
@@ -50,7 +73,7 @@ pub fn FormInputComponent(props: &FormInputProps) -> Html {
 				placeholder=""
 				class="block w-full rounded-2xl appearance-none focus:outline-none py-2 px-4"
 				ref={props.input_ref.clone()}
-				onchange={onchange}
+				onchange={on_change}
 			/>
 			<span class="text-red-500 text-xs pt-1 block">
 				{error_message}

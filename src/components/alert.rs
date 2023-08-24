@@ -19,8 +19,7 @@ pub fn AlertComponent(props: &AlertProps) -> Html {
         move |(show_alert, dispatch, delay_ms)| {
             let cloned_dispatch = dispatch.clone();
             if *show_alert {
-                let handle =
-                    Timeout::new(*delay_ms, move || set_hide_alert(cloned_dispatch)).forget();
+                let handle = Timeout::new(*delay_ms, move || set_hide_alert(cloned_dispatch)).forget();
                 let clear_handle = move || {
                     web_sys::Window::clear_timeout_with_handle(
                         &web_sys::window().unwrap(),

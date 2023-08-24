@@ -20,15 +20,13 @@ pub fn CableComponent(props: &CableProps) -> Html {
 
 	let delete_cable = {
 		let cloned_dispatch = dispatch.clone();
-		let cloned_client = store.as_ref().client.clone();
 		let cable_id = props.data.id;
 		
 		Callback::from(move |_: MouseEvent| {
 			let dispatch = cloned_dispatch.clone();
-			let client = cloned_client.clone();
 
 			spawn_local(async move {
-				let res = cable_requests::delete_cable(&client, cable_id).await;
+				let res = cable_requests::delete_cable(cable_id).await;
 				match res {
 					Ok(_) => {
 						store::set_show_alert("Cable deleted successfully".to_string(), dispatch.clone());
@@ -43,15 +41,13 @@ pub fn CableComponent(props: &CableProps) -> Html {
 	};
 
 	html! {
-		<table>
-			<tr>
-				<td width="20%">{&cable_type_a.name}</td>
-				<td width="15%">{&cable_type_a.cable_gender}</td>
-				<td width="20%">{&cable_type_b.name}</td>
-				<td width="15%">{&cable_type_b.cable_gender}</td>
-				<td width="20%">{&props.data.cable_length}</td>
-				<td width="10%"><i class="fas fa-trash" onclick={delete_cable}></i></td>
-			</tr>
-		</table>
+		<tr>
+			<td>{&cable_type_a.name}</td>
+			<td>{&cable_type_a.cable_gender}</td>
+			<td>{&cable_type_b.name}</td>
+			<td>{&cable_type_b.cable_gender}</td>
+			<td>{&props.data.cable_length}</td>
+			<td><button type="button" onclick={delete_cable} class="focus:outline-none text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900">{"Delete Cable"}</button></td>
+		</tr>
 	}
 }

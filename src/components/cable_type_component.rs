@@ -17,27 +17,27 @@ pub struct CableTypeProps {
 /// also displays a trash can icon that deletes the cable from the database when clicked
 #[function_component]
 pub fn CableTypeComponent(props: &CableTypeProps) -> Html {
-	let (store, dispatch) = use_store::<Store>();
+	let (_, dispatch) = use_store::<Store>();
 	
 	// if the trash can icon is clicked, delete the cable from the database
 	let delete_cable = {
 		let cloned_dispatch = dispatch.clone();
-		let cloned_client = store.as_ref().client.clone();
 		let cable_type_id = props.data.id;
 		
-		Callback::from(move |_: MouseEvent| {
+		Callback::from(move |event: MouseEvent| {
+			event.prevent_default();
+			event.stop_propagation();
 			let dispatch = cloned_dispatch.clone();
-			let client = cloned_client.clone();
 
 			spawn_local(async move {
-				let res = cable_type_requests::delete_cable_type(&client, cable_type_id).await;
+				let res = cable_type_requests::delete_cable_type(cable_type_id).await;
 				match res {
 					Ok(_) => {
 						store::set_show_alert("Cable type deleted successfully".to_string(), dispatch.clone());
 						store::delete_cable_type(cable_type_id, dispatch);
 					},
-					Err(_) => {
-						store::set_show_alert("Error deleting cable type".to_string(), dispatch);
+					Err(e) => {
+						store::set_show_alert(e.to_string(), dispatch);
 					}
 				}
 			})
@@ -45,21 +45,11 @@ pub fn CableTypeComponent(props: &CableTypeProps) -> Html {
 	};
 
 	html! {
-		<li>
-			<table>
-				<tr>
-					<td width="80%" onclick={&props.on_click}>
-						<table>
-							<tr>
-								<td width="30%">{&props.data.name}</td>
-								<td width="30%">{&props.data.cable_gender}</td>
-								<td width="40%"><img src={format!("data:image/png;base64, {}", String::from_utf8_lossy(&props.data.image))} /></td>
-							</tr>
-						</table>
-					</td>
-					<td width="20%"><i class="fas fa-trash" onclick={delete_cable}></i></td>
-				</tr>
-			</table>
-		</li>
+		<tr id={format!("cable_type_{}", props.data.id)} onclick={&props.on_click}>
+			<td id={format!("cable_name_{}", props.data.id)}>{&props.data.name}</td>
+			<td id={format!("cable_gender_{}", props.data.id)}>{&props.data.cable_gender}</td>
+			<td id={format!("cable_image_{}", props.data.id)}><img id={format!("inner_image_{}", props.data.id)} src={format!("data:image/png;base64,{}", String::from_utf8_lossy(&props.data.image))}/></td>
+			<td><button type="button" onclick={delete_cable} class="focus:outline-none text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900">{"Delete Cable Type"}</button></td>
+		</tr>
 	}
 }

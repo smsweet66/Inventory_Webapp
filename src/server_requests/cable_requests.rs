@@ -1,29 +1,39 @@
-use reqwest::{Client, Error};
+use reqwasm::{Error, http::Request};
 use crate::models::cable_model::*;
 
-const CABLE_URL: &str = "http://localhost:8080/cable";
+const CABLE_URL: &str = "http://192.168.2.51:8080/cable";
 
-pub async fn get_cables(client: &Client) -> Result<Vec<Cable>, Error> {
-    let resp = client.get(CABLE_URL).send().await?;
-
-    resp.json::<Vec<Cable>>().await
+pub async fn get_cables() -> Result<Vec<Cable>, Error> {
+    let res = Request::get(CABLE_URL).send().await?;
+    
+    res.json().await
 }
 
-pub async fn create_cable(client: &Client, cable: &NewCable) -> Result<Cable, Error> {
-    let resp = client.post(CABLE_URL).json(&cable).send().await?;
+pub async fn create_cable(cable: &NewCable) -> Result<Cable, Error> {
+    log::info!("request: {}", serde_json::to_string(cable)?);
+    let res = Request::post(CABLE_URL)
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_string(cable)?)
+        .send()
+        .await?;
 
-    resp.json::<Cable>().await
+    res.json().await
 }
 
-pub async fn update_cable(client: &Client, cable: &Cable) -> Result<Cable, Error> {
-    let resp = client.put(CABLE_URL).json(&cable).send().await?;
+pub async fn update_cable(cable: &Cable) -> Result<Cable, Error> {
+    let res = Request::put(CABLE_URL)
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_string(cable)?)
+        .send()
+        .await?;
 
-    resp.json::<Cable>().await
+    res.json().await
 }
 
-pub async fn delete_cable(client: &Client, cable_id: i32) -> Result<(), Error> {
+pub async fn delete_cable(cable_id: i32) -> Result<(), Error> {
     let url = format!("{}/{}", CABLE_URL, cable_id);
-    let _resp = client.delete(&url).send().await?;
-
-    Ok(())
+    match Request::delete(&url).send().await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e)
+    }
 }

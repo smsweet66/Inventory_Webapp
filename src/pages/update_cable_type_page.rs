@@ -4,8 +4,6 @@ use std::rc::Rc;
 
 use validator::{ValidationErrors, Validate};
 use wasm_bindgen_futures::spawn_local;
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yewdux::prelude::*;
 use yew_router::prelude::*;
@@ -57,7 +55,6 @@ pub fn UpdateCableTypePage(props: &UpdateCableTypePageProps) -> Html {
 	let handle_image_input = get_input_callback(Field::Image, form.clone());
 
 	let on_submit = {
-		let cloned_client = store.as_ref().client.clone();
 		let cloned_form = form.clone();
 		let cloned_validation_errors = validation_errors.clone();
 		let cloned_navigator = navigator.clone();
@@ -66,7 +63,6 @@ pub fn UpdateCableTypePage(props: &UpdateCableTypePageProps) -> Html {
 		Callback::from(move |event: SubmitEvent| {
 			event.prevent_default();
 
-			let client = cloned_client.clone();
 			let dispatch = cloned_dispatch.clone();
 			let navigator = cloned_navigator.clone();
 			let form = cloned_form.clone();
@@ -79,7 +75,7 @@ pub fn UpdateCableTypePage(props: &UpdateCableTypePageProps) -> Html {
 
 						set_page_loading(true, dispatch.clone());
 		
-						let res = cable_type_requests::update_cable_type(&client, &data).await;
+						let res = cable_type_requests::update_cable_type(&data).await;
 						match res {
 							Ok(cable_type) => {
 								set_page_loading(false, dispatch.clone());

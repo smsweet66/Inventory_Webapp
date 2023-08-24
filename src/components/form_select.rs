@@ -36,6 +36,10 @@ pub fn FormSelectComponent(props: &FormSelectProps) -> Html {
 		handle_onchange.emit(value);
 	});
 
+	if props.options.len() == 0 {
+		return html!();
+	}
+
 	html! {
 		<div>
 			<label html={props.name.clone()} class="block text-ct-blue-600 mb-3">
@@ -46,7 +50,8 @@ pub fn FormSelectComponent(props: &FormSelectProps) -> Html {
 				ref={props.input_ref.clone()}
 				onchange={onchange}
 			>
-				{for props.options.iter().map(|option| {
+				<option selected=true value={props.options[0].clone()}>{props.options[0].clone()}</option>
+				{for props.options.iter().skip(1).map(|option| {
 					html! {
 						<option value={option.clone()}>{option.clone()}</option>
 					}

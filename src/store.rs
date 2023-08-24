@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
 use yewdux::prelude::*;
-use reqwest::Client;
 
 use crate::models::{cable_type_model::*, cable_model::*};
 
@@ -10,20 +9,13 @@ pub struct AlertInput {
     pub alert_message: String,
 }
 
-#[derive(Default, Clone, Store)]
+#[derive(Default, Clone, Store, Serialize, Deserialize, Debug, PartialEq)]
 #[store(storage = "local", storage_tab_sync)]
 pub struct Store {
     pub loading: bool,
     pub alert_input: AlertInput,
-    pub client: Client,
     pub cable_types: Vec<CableType>,
     pub cables: Vec<Cable>,
-}
-
-impl PartialEq for Store {
-    fn eq(&self, other: &Self) -> bool {
-        self.cable_types == other.cable_types && self.cables == other.cables
-    }
 }
 
 pub fn set_page_loading(loading: bool, dispatch: Dispatch<Store>) {
@@ -70,6 +62,8 @@ pub fn delete_cable_type(cable_type_id: i32, dispatch: Dispatch<Store>) {
     dispatch.reduce_mut(move |store| {
         let index = store.cable_types.iter().position(|x| x.id == cable_type_id).unwrap();
         store.cable_types.remove(index);
+
+        store.cables.retain(|x| x.end_a != cable_type_id && x.end_b != cable_type_id);
     });
 }
 

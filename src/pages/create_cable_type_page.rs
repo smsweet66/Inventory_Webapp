@@ -4,8 +4,6 @@ use std::rc::Rc;
 
 use validator::{ValidationErrors, Validate};
 use wasm_bindgen_futures::spawn_local;
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yewdux::prelude::*;
 use yew_router::prelude::*;
@@ -27,7 +25,7 @@ fn get_input_callback(field: Field, cloned_form: UseStateHandle<NewCableType>) -
         match &field {
             Field::Name => data.name = value,
 			Field::Gender => data.cable_gender = Gender::from_string(&value),
-			Field::Image => data.image = value.into_bytes(),
+			Field::Image => data.image = value.into_bytes()
 		}
         cloned_form.set(data);
     })
@@ -52,7 +50,6 @@ pub fn CreateCableTypePage() -> Html {
 	let handle_image_input = get_input_callback(Field::Image, form.clone());
 
 	let on_submit = {
-		let cloned_client = store.as_ref().client.clone();
 		let cloned_form = form.clone();
 		let cloned_validation_errors = validation_errors.clone();
 		let cloned_navigator = navigator.clone();
@@ -61,7 +58,6 @@ pub fn CreateCableTypePage() -> Html {
 		Callback::from(move |event: SubmitEvent| {
 			event.prevent_default();
 
-			let client = cloned_client.clone();
 			let dispatch = cloned_dispatch.clone();
 			let navigator = cloned_navigator.clone();
 			let form = cloned_form.clone();
@@ -70,16 +66,15 @@ pub fn CreateCableTypePage() -> Html {
 			spawn_local(async move {
 				match form.validate() {
 					Ok(_) => {
-						let data = form.deref().clone();
-
 						set_page_loading(true, dispatch.clone());
+						let data = form.deref().clone();
 		
-						let res = create_cable_type(&client, &data).await;
+						let res = create_cable_type(&data).await;
 						match res {
 							Ok(cable_type) => {
-								add_cable_type(cable_type, dispatch.clone());
-								set_page_loading(false, dispatch);
-								todo!("navigate to cable type page");
+								set_page_loading(false, dispatch.clone());
+								add_cable_type(cable_type, dispatch);
+								navigator.go(-1);
 							}
 							Err(e) => {
 								set_page_loading(false, dispatch.clone());
@@ -96,40 +91,47 @@ pub fn CreateCableTypePage() -> Html {
 	};
 
 	html! {
-		<div>
-			<h1>{ "Create Cable Type" }</h1>
+		<section class="py-8 bg-ct-blue-600 min-h-screen grid place-items-center">
+			<div class = "w-full">
+				<h1 class="text-4xl xl:text-6xl text-center font-[600] text-ct-yellow-600 mb-4">
+					{ "Create Cable Type" }
+				</h1>
 
-			<form onsubmit={on_submit}>
-				<FormInputComponent
-					label="Cable Type"
-					name="name"
-					input_ref={name_input_ref.clone()}
-					handle_onchange={handle_name_input}
-					errors={&*validation_errors}
-				/>
-				<FormSelectComponent
-					label="Cable Gender"
-					name="gender"
-					input_ref={gender_input_ref.clone()}
-					handle_onchange={handle_gender_input}
-					errors={&*validation_errors}
-					options={Gender::to_string_vec()}
-				/>
-				<FormInputComponent
-					label="Image"
-					name="image"
-					input_ref={image_input_ref.clone()}
-					handle_onchange={handle_image_input}
-					errors={&*validation_errors}
-					input_type="file"
-				/>
-				<LoadingButtonComponent
-					loading={store.loading}
-					text_color={Some("text-ct-blue-600".to_string())}
+				<form
+					onsubmit={on_submit}
+					class="max-w-md w-full mx-auto overflow-hidden shadow-lg bg-ct-dark-200 rounded-2xl p-8 space-y-5"
 				>
-					{"Create Cable Type"}
-				</LoadingButtonComponent>
-			</form>
-		</div>
+					<FormInputComponent
+						label="Cable Type"
+						name="name"
+						input_ref={name_input_ref.clone()}
+						handle_onchange={handle_name_input}
+						errors={&*validation_errors}
+					/>
+					<FormSelectComponent
+						label="Cable Gender"
+						name="gender"
+						input_ref={gender_input_ref.clone()}
+						handle_onchange={handle_gender_input}
+						errors={&*validation_errors}
+						options={Gender::to_string_vec()}
+					/>
+					<FormInputComponent
+						label="Image"
+						name="image"
+						input_ref={image_input_ref.clone()}
+						handle_onchange={handle_image_input}
+						errors={&*validation_errors}
+						input_type="file"
+					/>
+					<LoadingButtonComponent
+						loading={store.loading}
+						text_color={Some("text-ct-blue-600".to_string())}
+					>
+						{"Create Cable Type"}
+					</LoadingButtonComponent>
+				</form>
+			</div>
+		</section>
 	}
 }

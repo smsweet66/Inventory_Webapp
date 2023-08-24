@@ -2,7 +2,6 @@ use std::ops::Deref;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use reqwest::Client;
 use validator::{ValidationErrors, Validate};
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
@@ -10,11 +9,12 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yewdux::prelude::*;
 use yew_router::prelude::*;
+use gloo::utils::document;
 
 use crate::models::cable_model::*;
 use crate::server_requests::cable_requests::create_cable;
-use crate::store::{Store, set_page_loading, set_show_alert};
-use crate::components::{form_input::FormInputComponent, form_select::FormSelectComponent, loading_button::LoadingButtonComponent, modal::ModalComponent};
+use crate::store::{Store, set_page_loading, set_show_alert, add_cable};
+use crate::components::{form_input::FormInputComponent, modal::*, loading_button::LoadingButtonComponent};
 use crate::pages::cable_type_page::CableTypePage;
 
 #[derive(Clone, Copy)]
@@ -39,8 +39,18 @@ fn get_input_callback(field: Field, cloned_form: UseStateHandle<NewCable>) -> Ca
 fn get_button_callback(field: Field, cloned_form: UseStateHandle<NewCable>) -> Callback<MouseEvent> {
 	Callback::from(move |event: MouseEvent| {
 		let target = event.target().unwrap();
-		let value = target.unchecked_into::<HtmlInputElement>().value();
+		let id_field = target.unchecked_into::<HtmlInputElement>().id();
+		let value = id_field.split("_").collect::<Vec<&str>>()[2].to_string();
 		get_input_callback(field, cloned_form.clone()).emit(value);
+	})
+}
+
+fn open_modal(id: String) -> Callback<MouseEvent>{
+	Callback::from(move |_| {
+		let modal = document()
+			.get_element_by_id(&id)
+			.expect(format!("Could not find element with id {}", id).as_str());
+		modal.set_attribute("style", "display: block;").unwrap();
 	})
 }
 
@@ -54,8 +64,6 @@ pub fn CreateCablePage() -> Html {
 	let navigator = use_navigator().unwrap();
 	let validation_errors = use_state(|| Rc::new(RefCell::new(ValidationErrors::new())));
 
-	let end_a_input_ref = NodeRef::default();
-	let end_b_input_ref = NodeRef::default();
 	let cable_length_input_ref = NodeRef::default();
 
 	let handle_end_a_input = get_button_callback(Field::EndA, form.clone());
@@ -63,7 +71,6 @@ pub fn CreateCablePage() -> Html {
 	let handle_cable_length_input = get_input_callback(Field::CableLength, form.clone());
 
 	let on_submit = {
-		let cloned_client = store.as_ref().client.clone();
 		let cloned_form = form.clone();
 		let cloned_validation_errors = validation_errors.clone();
 		let cloned_navigator = navigator.clone();
@@ -72,7 +79,6 @@ pub fn CreateCablePage() -> Html {
 		Callback::from(move |event: SubmitEvent| {
 			event.prevent_default();
 
-			let client = cloned_client.clone();
 			let dispatch = cloned_dispatch.clone();
 			let navigator = cloned_navigator.clone();
 			let form = cloned_form.clone();
@@ -81,12 +87,14 @@ pub fn CreateCablePage() -> Html {
 			spawn_local(async move {
 				match form.validate() {
 					Ok(_) => {
+						set_page_loading(true, dispatch.clone());
 						let data = form.deref().clone();
-						let response = create_cable(&client, &data).await;
+						let response = create_cable(&data).await;
 						match response {
-							Ok(_) => {
-								set_page_loading(true, dispatch.clone());
-								todo!("go back to the cable list page");
+							Ok(cable) => {
+								set_page_loading(false, dispatch.clone());
+								add_cable(cable, dispatch);
+								navigator.go(-1);
 							},
 							Err(err) => {
 								set_page_loading(false, dispatch.clone());
@@ -104,29 +112,27 @@ pub fn CreateCablePage() -> Html {
 
 	html! {
 		<>
-			<ModalComponent host_id="end_a_modal">
-				<>
-					<h1>{"Select Cable Type for End A"}</h1>
+			<ModalHostComponent id="end_a_modal" header="Select Cable Type for End A">
+				<ModalInnerComponent host_id="end_a_modal">
 					<CableTypePage on_click={handle_end_a_input}/>
-				</>
-			</ModalComponent>
+				</ModalInnerComponent>
+			</ModalHostComponent>
 
-			<ModalComponent host_id="end_b_modal">
-				<>
-					<h1>{"Select Cable Type for End B"}</h1>
+			<ModalHostComponent id="end_b_modal" header="Select Cable Type for End B">
+				<ModalInnerComponent host_id="end_b_modal">
 					<CableTypePage on_click={handle_end_b_input}/>
-				</>
-			</ModalComponent>
+				</ModalInnerComponent>
+			</ModalHostComponent>
 
 			<div>
 				<h1>{"Create Cable"}</h1>
 
 				<form onsubmit={on_submit}>
-					<button class="w3-button" data-toggle="modal" data-target="#end_a_modal">
-						{"End A"}
+					<button onclick={open_modal("end_a_modal".to_owned())} class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+						{"Select Cable Type For End A"}
 					</button>
-					<button class="w3-button" data-toggle="modal" data-target="#end_b_modal">
-						{"End B"}
+					<button onclick={open_modal("end_b_modal".to_owned())} class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+						{"Select Cable Type For End B"}
 					</button>
 					<FormInputComponent
 						label="Cable Length"
@@ -135,6 +141,12 @@ pub fn CreateCablePage() -> Html {
 						handle_onchange={handle_cable_length_input}
 						errors={&*validation_errors}
 					/>
+					<LoadingButtonComponent
+						loading={store.loading}
+						text_color={Some("text-ct-blue-600".to_string())}
+					>
+						{"Create Cable"}
+					</LoadingButtonComponent>
 				</form>
 			</div>
 		</>
